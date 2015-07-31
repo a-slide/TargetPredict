@@ -1,0 +1,3 @@
+[submodule "pyBlast"]
+	path = pyBlast
+	url = https://github.com/a-slide/pyBlast
