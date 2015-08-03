@@ -107,7 +107,7 @@ class TargetPredict (object):
             hit_list = blastn(
                 query_path=self.query,
                 task="blastn-short",
-                evalue=20,
+                evalue=1000,
                 blastn_opt="-word_size 5")
 
         print ("Found {} hits".format(len(hit_list)))
