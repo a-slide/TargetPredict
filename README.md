@@ -24,6 +24,10 @@
 * Miranda
 * ...
 
+For Extract_fasta_from_gff notebook
+* BCBio (pip install bcbio-gff)
+* Biopython (pip install biopython)
+
 ## Usage
 
 ...
