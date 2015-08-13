@@ -68,11 +68,11 @@ class TargetPredict (object):
         opt, args = optparser.parse_args()
 
         ### Init a RefMasker object
-        return TargetPredict (subject=opt.subject, query=opt.query, gff=opt.gff, offset=opt.offset)
+        return TargetPredict (subject=opt.subject, query=opt.query) #, gff=opt.gff)
 
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
-    def __init__(self, subject=None, query=None, gff=None, offset=0):
+    def __init__(self, subject=None, query=None):#, gff=None):
         """
         General initialization function for import and command line
         """
@@ -81,14 +81,15 @@ class TargetPredict (object):
         ### Verify
         assert subject, "A path to a subject file is mandatory"
         assert query, "A path to a query file is mandatory"
-        assert gff, "A path to a gff file is mandatory"
+        #assert gff, "A path to a gff file is mandatory"
 
-        ### Storing Variables
+         ### Storing Variables
         self.subject = subject
         self.query = query
-        self.gff = gff
-        self.offset = int(offset)
+        #self.gff = gff
         self.basename = "{}_{}".format(self.file_basename(subject), self.file_basename(query))
+        self.blast_hit = []
+        self.miranda_hits =[]
 
 
     #~~~~~~~PUBLIC METHODS~~~~~~~#
@@ -97,19 +98,17 @@ class TargetPredict (object):
         """
         """
         start_time = time()
-        print self.__dict__
 
         # BLAST prediction
         print ("Finding hits with blast")
 
         # Using an existing wrapper/parser
         with Blastn(ref_path=self.subject) as blastn:
-            hit_list = blastn(
-                query_path=self.query,
-                task="blastn-short",
-                evalue=1000,
-                blastn_opt="-word_size 5")
-
+            self.blast_hit = blastn( query_path=self.query, task="blastn-short", evalue=1000, blastn_opt="-word_size 5")
+            
+            # filter hit on negative strand only
+            # Select the n better alignements
+            
         print ("Found {} hits".format(len(hit_list)))
 
         # BLAT prediction + parsing
