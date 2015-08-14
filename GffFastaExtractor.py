@@ -30,7 +30,7 @@ class GffFastaExtractor (object):
 
     #~~~~~~~CLASS FIELDS~~~~~~~#
 
-    VERSION = "FastqSweeper 0.1"
+    VERSION = "GffFastaExtractor 0.1"
     USAGE = "Usage: %prog -f FASTA_file -g GFF_file [...]"
 
     #~~~~~~~CLASS METHODS~~~~~~~#
@@ -40,8 +40,6 @@ class GffFastaExtractor (object):
         """
         init class method for instantiation from command line. Parse arguments parse CL arguments
         """
-
-        print("\nParse commande line arguments")
 
         ### Define parser usage, options
         optparser = optparse.OptionParser(usage = self.USAGE, version = self.VERSION)

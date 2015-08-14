@@ -50,8 +50,6 @@ class TargetPredict (object):
         init class method for instantiation from command line. Parse arguments parse CL arguments
         """
 
-        print("\nParse commande line arguments")
-
         ### Define parser usage, options
         optparser = optparse.OptionParser(usage = self.USAGE, version = self.VERSION)
 
