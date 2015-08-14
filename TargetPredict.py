@@ -18,7 +18,7 @@
 # Standard library packages
 #from os import path, remove
 import optparse
-import sys
+from sys import exit as sys_exit
 from time import time
 from subprocess import Popen, PIPE
 #from gzip import open as gopen
@@ -28,7 +28,7 @@ from datetime import datetime
 # Third party package
 
 # Local packages
-from pyBlast.Blastn import Blastn
+from Blastn import Blastn
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -67,21 +67,27 @@ class TargetPredict (object):
         ### Parse arguments
         opt, args = optparser.parse_args()
 
+        # Verify the presence of options
+        try:
+            assert opt.subject, "Missing subject (-s) option"
+            assert opt.gff, "Missing query (-q) option"
+
+        except AssertionError as E:
+            print (E)
+            optparser.print_help()
+            sys_exit()
+
+
         ### Init a RefMasker object
         return TargetPredict (subject=opt.subject, query=opt.query) #, gff=opt.gff)
 
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
-    def __init__(self, subject=None, query=None):#, gff=None):
+    def __init__(self, subject, query):#, gff=None):
         """
         General initialization function for import and command line
         """
         print("\nInitialize TargetPredict")
-
-        ### Verify
-        assert subject, "A path to a subject file is mandatory"
-        assert query, "A path to a query file is mandatory"
-        #assert gff, "A path to a gff file is mandatory"
 
          ### Storing Variables
         self.subject = subject
@@ -105,10 +111,10 @@ class TargetPredict (object):
         # Using an existing wrapper/parser
         with Blastn(ref_path=self.subject) as blastn:
             self.blast_hit = blastn( query_path=self.query, task="blastn-short", evalue=1000, blastn_opt="-word_size 5")
-            
+
             # filter hit on negative strand only
             # Select the n better alignements
-            
+
         print ("Found {} hits".format(len(hit_list)))
 
         # BLAT prediction + parsing

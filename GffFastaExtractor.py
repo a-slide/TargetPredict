@@ -52,8 +52,10 @@ class GffFastaExtractor (object):
             help= "Path to the gff file containing annotations of the genome file")
         optparser.add_option('-o', '--offset', dest="offset", default = 0,
             help= "Bases to extract before and after the feature (facultative, default 0)")
-        optparser.add_option('-l', '--feature_list', dest="features", default = "",
+        optparser.add_option('--features', dest="features", default = "",
             help= "Restrict extraction to a list of features. The list must be SPACE separated and quoted(facultative, default all)")
+        optparser.add_option('--chromosomes', dest="chromosomes", default = "",
+            help= "Restrict extraction to a list of chromosomes. The list must be SPACE separated and quoted(facultative, default all)")
 
         ### Parse arguments
         opt, args = optparser.parse_args()
@@ -69,13 +71,13 @@ class GffFastaExtractor (object):
             sys_exit()
 
         ### Init a RefMasker object
-        return GffFastaExtractor (opt.fasta, opt.gff, opt.offset, opt.features.split())
+        return GffFastaExtractor (opt.fasta, opt.gff, opt.offset, opt.features.split(), opt.chromosomes.split())
 
         # optparser.print_help()
 
     ##### FONDAMENTAL METHODS #####
 
-    def __init__ (self, fasta, gff, offset, features=[]):
+    def __init__ (self, fasta, gff, offset, features=[], chromosomes=[]):
         """Init fonction parsing fasta and gff files"""
 
         print("Initialize GffFastaExtractor")
@@ -83,22 +85,39 @@ class GffFastaExtractor (object):
         self.fasta = fasta
         self.gff = gff
         self.offset = int(offset)
-        self.feature_type = features
+        self.features = features
+        self.chromosomes = chromosomes
 
-        self.out_name = "{}_{}_Offset_{}_Feature_{}".format (
+        self.out_name = "{}_{}_Offset-{}_Features-{}_Chr-{}.fa.gz".format (
             self.fasta.rpartition('/')[2].partition('.')[0],
             self.gff.rpartition('/')[2].partition('.')[0],
             self.offset,
-            "-".join(self.feature_type) if self.feature_type else "all")
+            "-".join(self.features) if self.features else "all",
+            "-".join(self.chromosomes) if self.chromosomes else "all")
 
         # Parse the fasta sequence and store in a dict
         print("  Parsing fasta file")
-        with open (self.fasta, "r") as fasta_in:
-            self.seq_dict = SeqIO.to_dict(SeqIO.parse(fasta_in, "fasta"))
+        openFunc = gopen if self.fasta.endswith(".gz") else open
+        with openFunc (self.fasta, "r") as fasta_in:
+            self.seq_dict = OrderedDict()
+            all_seq = valid_seq = 0
+            for seq in SeqIO.parse(fasta_in, "fasta"):
+                all_seq += 1
+                if not chromosomes or seq.id in chromosomes:
+                    valid_seq += 1
+                    self.seq_dict[seq.id]= seq
+        print ("    Extract {} sequence(s) out of {}".format(
+            valid_seq,
+            all_seq))
 
         # Parse the gff file with GffParser
         print("  Parsing gff file")
-        self.gff_parser = GffParser (gff_file=gff, feature_types=self.feature_type)
+        self.gff_parser = GffParser (gff_file=gff, features=self.features, chromosomes=self.chromosomes)
+        print ("    Extract {} valid feature(s) out of {} from {} valid sequence(s) out of {} ".format(
+            self.gff_parser.valid_features,
+            self.gff_parser.all_features,
+            self.gff_parser.valid_seq,
+            self.gff_parser.all_seq ))
 
     ##### PUBLIC METHODS #####
 
@@ -112,7 +131,7 @@ class GffFastaExtractor (object):
 
         n_feature = 0
 
-        with open (self.out_name, "w") as fasta_out:
+        with gopen (self.out_name, "w") as fasta_out:
             for seq_id, gff_sequence in self.gff_parser.gff_dict.items():
 
                 assert seq_id in self.seq_dict, "fasta and gff are incompatible: {} not found in fasta".format(seq_id)
@@ -120,11 +139,10 @@ class GffFastaExtractor (object):
                 print ("  Extracting features from sequence {}".format(seq_id))
                 for feature in gff_sequence.features:
 
-                    if not self.feature_type or feature.type in self.feature_type:
-                        fasta_out.write(">{}\n{}\n".format(
-                                str(feature).replace("\t", ":").replace(" ", "-"),
-                                self.extract_seq(seq_id, feature.start+1, feature.end, feature.strand)))
-                        n_feature += 1
+                    fasta_out.write(">{}\n{}\n".format(
+                            str(feature).replace("\t", ":").replace(" ", "_"),
+                            self.extract_seq(seq_id, feature.start+1, feature.end, feature.strand)))
+                    n_feature += 1
 
         # Finalize
         print ("\nExtract {} features in {}s".format(n_feature, round(time()-start_time, 3)))
@@ -208,16 +226,15 @@ class GffParser(object):
 
     ##### FONDAMENTAL METHODS #####
 
-    def __init__(self, gff_file, feature_types=[]):
+    def __init__(self, gff_file, features=[], chromosomes=[]):
         """
         gff_file    Path to a standard gff3 file
-        feature_types    restrict to the type of features indicated in the list (Default = all types)
+        features    restrict to the type of features indicated in the list (Default = all types)
         """
         openFunc = gopen if gff_file.endswith(".gz") else open
         self.gff_dict = OrderedDict()
         self.gff_header = ""
-        self.valid_features = 0
-        self.all_features = 0
+        self.all_features = self.valid_features = self.all_seq = self.valid_seq = 0
 
         with openFunc(gff_file) as gff:
             for line in gff:
@@ -233,7 +250,13 @@ class GffParser(object):
 
                     # Create a GffSequence
                     seq_id = unquote(parts[1])
-                    self.gff_dict[seq_id]= GffSequence (seq_id = seq_id, start = int(parts[2]), end = int(parts[3]))
+                    self.all_seq += 1
+                    if not chromosomes or seq_id in chromosomes:
+                        self.valid_seq =+ 1
+                        self.gff_dict[seq_id]= GffSequence (
+                            seq_id = seq_id,
+                            start = int(parts[2]),
+                            end = int(parts[3]))
 
                 # Parse the general gff header
                 elif line.startswith("#"):
@@ -251,28 +274,29 @@ class GffParser(object):
                     parts = line.strip().split("\t")
                     assert len(parts) == 9, "File format is not standard-compatible : Invalid feature description line"
 
-                    # Verify first if the feature type is allowed
+                    # Verify first if the feature type and chromosome is allowed
                     type = '.' if parts[2] == "." else unquote(parts[2])
-                    if not feature_types or type in feature_types:
-
-                        # Count valid features
-                        self.valid_features += 1
-
-                        # Extract the sequence id and verify that the corresponding sequence-region pragma is already in the dict
+                    if not features or type in features:
                         seq_id = '.' if parts[0] == "." else unquote(parts[0])
-                        assert seq_id != ".", "File format is not standard-compatible : Missing seq_id of a feature"
-                        assert seq_id in self.gff_dict, "File format is not standard-compatible : Missing or misplaced sequence-region pragma"
+                        if not chromosomes or seq_id in chromosomes:
 
-                        # Finally add the feature to the feature list corresponding to the seqid entry in gff_dict
-                        self.gff_dict[seq_id].add_feature(
-                            source = '.' if parts[1] == "." else unquote(parts[1]),
-                            type = type,
-                            start = '.' if parts[3] == '.' else int(parts[3]),
-                            end = '.' if parts[4] == '.' else int(parts[4]),
-                            score = '.' if parts[5] == '.' else float(parts[4]),
-                            strand = '.' if parts[6] == '.' else unquote(parts[6]),
-                            phase = '.' if parts[7] == '.' else int(parts[7]),
-                            attributes = self._parse_attributes(parts[8]))
+                            # Count valid features
+                            self.valid_features += 1
+
+                            # Verify that the corresponding sequence-region pragma is already in the dict
+                            assert seq_id != ".", "File format is not standard-compatible : Missing seq_id of a feature"
+                            assert seq_id in self.gff_dict, "File format is not standard-compatible : Missing or misplaced sequence-region pragma"
+
+                            # Finally add the feature to the feature list corresponding to the seqid entry in gff_dict
+                            self.gff_dict[seq_id].add_feature(
+                                source = '.' if parts[1] == "." else unquote(parts[1]),
+                                type = type,
+                                start = '.' if parts[3] == '.' else int(parts[3]),
+                                end = '.' if parts[4] == '.' else int(parts[4]),
+                                score = '.' if parts[5] == '.' else float(parts[4]),
+                                strand = '.' if parts[6] == '.' else unquote(parts[6]),
+                                phase = '.' if parts[7] == '.' else int(parts[7]),
+                                attributes = self._parse_attributes(parts[8]))
 
     def __str__ (self):
         """Return a gff formated line"""
