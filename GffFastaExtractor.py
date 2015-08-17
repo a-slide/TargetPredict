@@ -85,6 +85,7 @@ class GffFastaExtractor (object):
         self.offset = int(offset)
         self.features = features
         self.chromosomes = chromosomes
+        self.separator = "#" # substitution separator
 
         self.out_name = "{}_{}_Offset-{}_Features-{}_Chr-{}.fa.gz".format (
             self.fasta.rpartition('/')[2].partition('.')[0],
@@ -138,7 +139,7 @@ class GffFastaExtractor (object):
                 for feature in gff_sequence.features:
 
                     fasta_out.write(">{}\n{}\n".format(
-                            str(feature).replace("\t", ":").replace(" ", "_"),
+                            str(feature).replace("\t", self.separator).replace(" ", "_"),
                             self.extract_seq(seq_id, feature.start+1, feature.end, feature.strand)))
                     n_feature += 1
 

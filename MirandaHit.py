@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@package    Miranda
-@brief      Class to represent the informations from a miranda hit
+@package    MirandaHit
 @copyright  [GNU General Public License v2](http://www.gnu.org/licenses/gpl-2.0.html)
 @author     Adrien Leger - 2014
 * <adrien.leger@gmail.com> <adrien.leger@inserm.fr> <adrien.leger@univ-nantes.fr>
@@ -10,15 +9,12 @@
 * [Atlantic Gene Therapies - INSERM 1089] (http://www.atlantic-gene-therapies.fr/)
 """
 
-# Standard library imports
-from collections import OrderedDict
+# Local packages
+from GffLine import GffLine
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 class MirandaHit(object):
-    """
-    @class  MirandaHit
-    @brief  Object oriented class containing informations of one miranda hit
-    """
+    """ Object oriented class containing informations of one miranda hit """
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
     #~~~~~~~CLASS FIELDS~~~~~~~#
@@ -35,9 +31,7 @@ class MirandaHit(object):
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
     def __init__(self, q_id, s_id, score, energy, q_start, q_end, s_start, s_end, length, identity, homology):
-        """
-        Create a MirandaHit object which is automatically added to the class tracking instance list
-        """
+        """ Create a MirandaHit object """
 
         # Store parameters in self variables
         self.id = self.next_id()
@@ -53,6 +47,9 @@ class MirandaHit(object):
         self.identity = float(identity[:-1])
         self.homology = float(homology[:-1])
 
+        # Parse the gff_line in the contained in the subject id
+        self.gff = GffLine(self.s_id)
+
     def __str__(self):
         msg = "HIT {}".format(self.id)
         msg += "\tQuery\t{}:{}-{}\n".format(self.q_id, self.q_start, self.q_end)
@@ -63,23 +60,3 @@ class MirandaHit(object):
 
     def __repr__(self):
         return "<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
-
-    #~~~~~~~PUBLIC METHODS~~~~~~~#
-
-    def get_report (self, full=False):
-        """
-        Generate a report under the form of an Ordered dictionary
-        @param full If true a dict containing all self parameters will be returned
-        """
-        report = OrderedDict ()
-        report["Query"] = "{}:{}-{}".format(self.q_id, self.q_start, self.q_end)
-        report["Subject"] = "{}:{}-{}".format(self.s_id, self.s_start, self.s_end)
-
-        if full:
-            report["Identity"] = self.identity
-            report["Homology"] = self.homology
-            report["Score"] = self.score
-            report["Energy"] = self.energy
-            report["Hit length"] = self.length
-
-        return report
