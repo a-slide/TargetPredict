@@ -50,6 +50,8 @@ class GffFastaExtractor (object):
             help= "Path to the gff file containing annotations of the genome file")
         optparser.add_option('-o', '--offset', dest="offset", default = 0,
             help= "Bases to extract before and after the feature (facultative, default 0)")
+        optparser.add_option('--fusion', dest="fusion", action='store_true', default = False,
+            help= "Fuse overlapping features in a meta-feature (facultative, default False)")
         optparser.add_option('--features', dest="features", default = "",
             help= "Restrict extraction to a list of features. The list must be SPACE separated and quoted(facultative, default all)")
         optparser.add_option('--chromosomes', dest="chromosomes", default = "",
@@ -69,13 +71,13 @@ class GffFastaExtractor (object):
             sys_exit()
 
         ### Init a RefMasker object
-        return GffFastaExtractor (opt.fasta, opt.gff, opt.offset, opt.features.split(), opt.chromosomes.split())
+        return GffFastaExtractor (opt.fasta, opt.gff, opt.offset, opt.fusion, opt.features.split(), opt.chromosomes.split())
 
         # optparser.print_help()
 
     ##### FONDAMENTAL METHODS #####
 
-    def __init__ (self, fasta, gff, offset, features=[], chromosomes=[]):
+    def __init__ (self, fasta, gff, offset=0, fusion=False, features=[], chromosomes=[]):
         """Init fonction parsing fasta and gff files"""
 
         print("Initialize GffFastaExtractor")
@@ -83,16 +85,18 @@ class GffFastaExtractor (object):
         self.fasta = fasta
         self.gff = gff
         self.offset = int(offset)
+        self.fusion = fusion
         self.features = features
         self.chromosomes = chromosomes
-        self.separator = "#" # substitution separator
+        self.separator = "|" # substitution separator
 
-        self.out_name = "{}_{}_Offset-{}_Features-{}_Chr-{}.fa.gz".format (
+        self.out_name = "{}_{}_Offset-{}_Features-{}_Chr-{}_{}.fa.gz".format (
             self.fasta.rpartition('/')[2].partition('.')[0],
             self.gff.rpartition('/')[2].partition('.')[0],
             self.offset,
             "-".join(self.features) if self.features else "all",
-            "-".join(self.chromosomes) if self.chromosomes else "all")
+            "-".join(self.chromosomes) if self.chromosomes else "all",
+            "fused" if self.fusion else "not_fused")
 
         # Parse the fasta sequence and store in a dict
         print("  Parsing fasta file")
@@ -111,12 +115,22 @@ class GffFastaExtractor (object):
 
         # Parse the gff file with GffParser
         print("  Parsing gff file")
-        self.gff_parser = GffParser (gff_file=gff, features=self.features, chromosomes=self.chromosomes)
-        print ("    Extract {} valid feature(s) out of {} from {} valid sequence(s) out of {} ".format(
+        self.gff_parser = GffParser (
+            gff_file=gff,
+            offset=self.offset,
+            fusion=self.fusion,
+            features=self.features,
+            chromosomes=self.chromosomes)
+
+        print ("    Extract {} valid feature(s) out of {} from {} valid sequence(s) out of {}".format (
             self.gff_parser.valid_features,
             self.gff_parser.all_features,
             self.gff_parser.valid_seq,
             self.gff_parser.all_seq ))
+        if fusion:
+            print ("    {} out of {} features remaining after fusion".format (
+                self.gff_parser.fused_features,
+                self.gff_parser.valid_features))
 
     ##### PUBLIC METHODS #####
 
@@ -144,25 +158,15 @@ class GffFastaExtractor (object):
                     n_feature += 1
 
         # Finalize
-        print ("\nExtract {} features in {}s".format(n_feature, round(time()-start_time, 3)))
+        print ("\nExtract and wrote {} features in {}s".format(n_feature, round(time()-start_time, 3)))
         return(0)
 
     ##### PRIVATE METHODS #####
 
     def extract_seq(self, seq_id, start, end, strand):
 
-        # add ofset if needed and correct if outside of boundaries
-        if self.offset:
-            start -= self.offset
-            if start<0:
-                start=0
-            end += self.offset
-            if end>len(self.seq_dict[seq_id]):
-                end=len(self.seq_dict[seq_id])
-
         if strand == "+":
             return str(self.seq_dict[seq_id][start:end].seq)
-
         else:
             return str(self.seq_dict[seq_id][start:end].reverse_complement().seq)
 
@@ -192,7 +196,36 @@ class GffFeature(object):
             self.score,
             self.strand,
             self.phase,
-            ";".join(["=".join(attribute) for attribute in self.attributes.items()]))
+            ";".join(["{}={}".format(key, ":".join(attribute)) for key, attribute in self.attributes.items()]))
+
+    def __add__(self, other):
+        """Support for concatenation of GffFeature objects = + operator"""
+        assert self.seq_id == other.seq_id, "Sequence ID are not equal"
+        assert self.type == other.type, "Feature types are not equal"
+        assert self.strand == other.strand, "Feature strand are not equal"
+        assert self.attributes["gene_id"] == other.attributes["gene_id"], "Feature Gene ID are not equal"
+
+        # Fuse attribute dictionnary
+        attributes_dict = OrderedDict()
+        for key in self.attributes.keys():
+            attributes_dict[key] = list(set(self.attributes[key]+other.attributes[key]))
+
+        return GffFeature(
+            seq_id = self.seq_id,
+            source = self.source if self.source == other.source else "{}:{}".format (self.source, other.source),
+            type = self.type,
+            start = self.start if self.start <= other.start else other.start,
+            end = self.end if self.end >= other.end else other.end,
+            score = '.',
+            strand = self.strand,
+            phase = '.',
+            attributes = attributes_dict)
+
+    def is_overlapping(self, other):
+        """Verify if 2 features object overlap or are adjacent"""
+        assert self.attributes["gene_id"] == other.attributes["gene_id"], "Feature Gene ID are not equal"
+        return self.seq_id == other.seq_id and self.start <= other.end+1 and other.start <= self.end+1
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 class GffSequence(object):
@@ -225,7 +258,7 @@ class GffParser(object):
 
     ##### FONDAMENTAL METHODS #####
 
-    def __init__(self, gff_file, features=[], chromosomes=[]):
+    def __init__(self, gff_file, fusion=False, offset=0, features=[], chromosomes=[]):
         """
         gff_file    Path to a standard gff3 file
         features    restrict to the type of features indicated in the list (Default = all types)
@@ -233,12 +266,13 @@ class GffParser(object):
         openFunc = gopen if gff_file.endswith(".gz") else open
         self.gff_dict = OrderedDict()
         self.gff_header = ""
-        self.all_features = self.valid_features = self.all_seq = self.valid_seq = 0
+        self.all_features = self.valid_features = self.fused_features = self.all_seq = self.valid_seq = 0
 
         with openFunc(gff_file) as gff:
             for line in gff:
                 line = line.lstrip()
-                if not line: continue
+                if not line:
+                    continue
 
                 # Parse sequence delimiter in gff file (ex: ##sequence-region chr1 1 248956422)
                 if line.startswith("##sequence-region"):
@@ -251,7 +285,7 @@ class GffParser(object):
                     seq_id = unquote(parts[1])
                     self.all_seq += 1
                     if not chromosomes or seq_id in chromosomes:
-                        self.valid_seq =+ 1
+                        self.valid_seq += 1
                         self.gff_dict[seq_id]= GffSequence (
                             seq_id = seq_id,
                             start = int(parts[2]),
@@ -286,16 +320,74 @@ class GffParser(object):
                             assert seq_id != ".", "File format is not standard-compatible : Missing seq_id of a feature"
                             assert seq_id in self.gff_dict, "File format is not standard-compatible : Missing or misplaced sequence-region pragma"
 
+                            # Extract start and end coordinates, apply offset and verify that the values are valid
+                            start = int(parts[3]) - offset
+                            if start < 0:
+                                start = 0
+
+                            end = int(parts[4]) + offset
+                            if end > self.gff_dict[seq_id].end:
+                                end = self.gff_dict[seq_id].end
+
                             # Finally add the feature to the feature list corresponding to the seqid entry in gff_dict
                             self.gff_dict[seq_id].add_feature(
                                 source = '.' if parts[1] == "." else unquote(parts[1]),
                                 type = type,
-                                start = '.' if parts[3] == '.' else int(parts[3]),
-                                end = '.' if parts[4] == '.' else int(parts[4]),
+                                start = start,
+                                end = end,
                                 score = '.' if parts[5] == '.' else float(parts[4]),
                                 strand = '.' if parts[6] == '.' else unquote(parts[6]),
                                 phase = '.' if parts[7] == '.' else int(parts[7]),
                                 attributes = self._parse_attributes(parts[8]))
+
+        # If the fusion of the features is required = additional processing needed
+        if fusion:
+            print ("Fuse overlapping features")
+
+            for seq_id in self.gff_dict.keys():
+
+                # sort the list by start coordinates
+                self.gff_dict[seq_id].features.sort(key=lambda feature: feature.start)
+
+                # init empty features and a list for the new features
+                positive_feature = None
+                negative_feature = None
+                new_feature_list = []
+
+                for feature in self.gff_dict[seq_id].features:
+
+                    # Process features on the positive strand
+                    if feature.strand == "+":
+                        if not positive_feature:
+                            positive_feature = feature
+                        else:
+                            if feature.is_overlapping (positive_feature):
+                                positive_feature = positive_feature+feature
+                            else:
+                                new_feature_list.append (positive_feature)
+                                positive_feature = feature
+
+                    # Process features on the negative strand
+                    else :
+                        if not negative_feature:
+                            negative_feature = feature
+                        else:
+                            if feature.is_overlapping (negative_feature):
+                                negative_feature = negative_feature+feature
+                            else:
+                                new_feature_list.append (negative_feature)
+                                negative_feature = feature
+
+                # Flush the last item if needed
+                if positive_feature:
+                    new_feature_list.append (positive_feature)
+                if negative_feature:
+                    new_feature_list.append (negative_feature)
+
+                # Replace the previous feature list with the new one
+                self.gff_dict[seq_id].features = new_feature_list
+                self.fused_features += len (new_feature_list)
+
 
     def __str__ (self):
         """Return a gff formated line"""
@@ -316,7 +408,7 @@ class GffParser(object):
         if attribute_string != ".":
             for attribute in attribute_string.split(";"):
                 key, value = attribute.split("=")
-                attributes_dict[unquote(key)] = unquote(value)
+                attributes_dict[unquote(key)] = unquote(value).split(" ") #split in a list of value
         return attributes_dict
 
 

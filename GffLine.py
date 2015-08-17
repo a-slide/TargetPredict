@@ -27,7 +27,7 @@ class GffLine(object):
         Create a MirandaHit object which is automatically added to the class tracking instance list
         """
 
-        self.separator = "#" # substitution separator
+        self.separator = "|" # substitution separator
 
         # Store parameters in self variables
         parts = gff_line.strip().split(self.separator)
@@ -67,5 +67,3 @@ class GffLine(object):
         report ["Strand"] = self.strand
 
         return report
-
-# chrX#HAVANA#exon#31507281#31507453#.#-#.#ID=exon:ENST00000358062.6:9;Parent=ENST00000358062.6;gene_id=ENSG00000198947.14;transcript_id=ENST00000358062.6;gene_type=protein_coding;gene_status=KNOWN;gene_name=DMD;transcript_type=protein_coding;transcript_status=KNOWN;transcript_name=DMD-017;exon_number=9;exon_id=ENSE00003500236.1;level=2;protein_id=ENSP00000350765.2;transcript_support_level=5;havana_gene=OTTHUMG00000021336.5;havana_transcript=OTTHUMT00000355787.1;tag=mRNA_start_NF,cds_start_NF
