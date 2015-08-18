@@ -57,7 +57,7 @@ class Blastn(object):
             self.makeblastdb_exec, self.makeblastdb_opt, self.dbtype, self.input_type,
             self.ref_path, self.db_path)
 
-        print ("CREATE DATABASE: {}\n".format(cmd))
+        print ("MAKEBLASTDB: {}\n".format(cmd))
         # Run the command line without stdin and asking both stdout and stderr
         try:
             # Execute the command line in the default shell
@@ -120,7 +120,7 @@ class Blastn(object):
         cmd = "{} {} -num_threads {} -task {} -evalue {} -outfmt \"6 std qseq\" -dust no -query {} -db {}".format(
             blastn_exec, blastn_opt, cpu_count(), task, evalue, query_path, self.db_path)
 
-        print ("MAKE BLAST: {}\n".format(cmd))
+        print ("BLASTN: {}".format(cmd))
         # Execute the command line in the default shell
         proc = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
         stdout, stderr = proc.communicate()
@@ -177,5 +177,5 @@ class Blastn(object):
         return hit_list
 
     def rm_db(self):
-        print (" * Cleaning up blast DB files for \"{}\"".format(self.db_basename))
+        #~print (" * Cleaning up blast DB files for \"{}\"".format(self.db_basename))
         rmtree(self.db_dir)

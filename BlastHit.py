@@ -47,33 +47,27 @@ class BlastHit(object):
         self.evalue = float(evalue)
         self.score = float(score)
         self.q_seq = q_seq
+        self.q_start = int(q_start)-1
+        self.q_end = int(q_end)
 
         # Parse the gff_line in the contained in the subject id
         self.gff = GffLine(self.s_id)
 
         # Correct coordinates of hit for python 0 based coordinates depending of the orientation
-        if int(q_start) < int(q_end):
-            self.q_orient = "+"
-            self.q_start = int(q_start)-1
-            self.q_end = int(q_end)
-        else:
-            self.q_orient = "-"
-            self.q_start = int(q_start)
-            self.q_end = int(q_end)-1
 
         if int(s_start) < int(s_end):
-            self.s_orient = "+"
+            self.strand = "+"
             self.s_start = int(s_start)-1
             self.s_end = int(s_end)
         else:
-            self.s_orient = "-"
-            self.s_start = int(s_start)
-            self.s_end = int(s_end)-1
+            self.strand = "-"
+            self.s_start = int(s_end)-1
+            self.s_end = int(s_start)
 
     def __str__(self):
         msg = "HIT {}".format(self.id)
-        msg += "\tQuery\t{}:{}-{}({})\n".format(self.q_id, self.q_start, self.q_end, self.q_orient)
-        msg += "\tSubject\t{}:{}-{}({})\n".format(self.s_id, self.s_start, self.s_end, self.s_orient)
+        msg += "\tQuery\t{}:{}-{}({})\n".format(self.q_id, self.q_start, self.q_end)
+        msg += "\tSubject\t{}:{}-{}({})\n".format(self.s_id, self.s_start, self.s_end, self.strand)
         msg += "\tLenght : {}\tIdentity : {}%\tEvalue : {}\tBit score : {}\n".format(self.length, self.identity, self.evalue, self.score)
         msg += "\tAligned query seq : {}\n".format(self.q_seq)
         return (msg)
@@ -82,16 +76,20 @@ class BlastHit(object):
         return "<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
 
     def report (self):
+        """Return and ordered dict containing all the required informations"""
         report = OrderedDict()
-        report ["Query"] = self.q_id
-        report ["Query_start"] = self.q_start
-        report ["Query_end"] = self.q_end
-        report ["Subject"] = self.gff.report()
-        report ["Subject_start"] = self.s_start
-        report ["Subject_end"] = self.s_end
-        report ["Score"] = self.score
-        report ["Evalue"] = self.evalue
-        report ["Length"] = self.length
-        report ["Identity"] = self.identity
+        for key, val in self.gff.report().items():
+            report ["subject_"+key] = val
+        report ["subject_hit_start"] = self.s_start+1
+        report ["subject_hit_end"] = self.s_end
+        report ["query"] = self.q_id
+        report ["query_hit_start"] = self.q_start+1
+        report ["query_hit_end"] = self.q_end
+        report ["hit_score"] = self.score
+        report ["hit_evalue"] = self.evalue
+        report ["hit_length"] = self.length
+        report ["hit_identity"] = self.identity
+        report ["hit_gap"] = self.gap
+        report ["hit_mismatch"] = self.mis
 
         return report

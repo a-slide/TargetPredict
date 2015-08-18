@@ -116,56 +116,46 @@ class TargetPredict (object):
     def __call__(self):
         """
         """
-        start_time = time()
-
         ##### BLAST prediction #####
         print ("Finding hits with BLASTN")
 
-        # Using an existing wrapper/parser
+        # Blast using an existing wrapper/parser
         with Blastn(ref_path=self.subject) as blastn:
-            self.blast_hit = blastn (query_path=self.query, task="blastn-short", evalue=100, blastn_opt="-word_size 5")
+            self.blast_hit = blastn (query_path=self.query, task="blastn-short", evalue=1000, blastn_opt="-word_size 5")
 
-            # filter hit on negative strand only
-            # Select the n better alignements
-
+        # Suppress hits on positive strand and sort by score
+        self.blast_hit = [hit for hit in self.blast_hit if hit.strand == "-"]
         self.blast_hit.sort (key=lambda x: x.score, reverse=True)
-        self._write_report (self.blast_hit, "{}_raw_blast_results.txt".format(self.basename))
 
-        #self.meta_blast_hit = self._remove_duplicate (self.blast_hit)
-        # print meta blast hit report
-
-        for hit in self.blast_hit:
-            print hit.gff.gene_name
+        # Write a complete blast report
+        self._write_report (self.blast_hit, "{}_raw_blast_results.csv".format(self.basename))
 
         ##### MIRANDA prediction + parsing #####
-        #print ("Finding hits with MIRANDA")
+        print ("Finding hits with MIRANDA")
 
-        #miranda_exec = "miranda"
-        #miranda_score = 175
-        #miranda_opt = "-quiet"
+        miranda_exec = "miranda"
+        miranda_score = 175
+        miranda_opt = "-quiet"
 
-        #cmd = "{} {} {} {} -sc {}".format(miranda_exec, self.query, self.subject, miranda_opt, miranda_score)
-        #print (cmd)
-        #miranda_output = self.yield_cmd(cmd)
+        cmd = "{} {} {} {} -sc {}".format(miranda_exec, self.query, self.subject, miranda_opt, miranda_score)
+        print (cmd)
+        miranda_output = self.yield_cmd(cmd)
 
-        #for line in miranda_output:
-            #if line[0] == ">" and line[1] != ">":
-                #hit_split = line[1:].strip().split()
-                #assert len(hit_split) == 11, "Invalid miranda line: {}".format(line)
-                #self.miranda_hits.append (MirandaHit(*hit_split))
+        for line in miranda_output:
+            if line[0] == ">" and line[1] != ">":
+                hit_split = line[1:].strip().split()
+                assert len(hit_split) == 11, "Invalid miranda line: {}".format(line)
+                self.miranda_hits.append (MirandaHit(*hit_split))
 
-        #self.miranda_hits.sort (key=lambda x: x.score, reverse=True)
+        self.miranda_hits.sort (key=lambda x: x.score, reverse=True)
 
-        #for hit in islice (self.miranda_hits, 20):
-            #print hit.gff.gene_id
+        # Write a complete blast report
+        self._write_report (self.miranda_hits, "{}_raw_miranda_results.csv".format(self.basename))
 
         # COMPARISON WITH GFF FILES
 
         # INTERSECTION (VEIN DIAGRAM)
 
-        # Finalize
-        print ("\nDone in {}s".format(round(time()-start_time, 3)))
-        return(0)
 
     #~~~~~~~PRIVATE METHODS~~~~~~~#
 
@@ -184,52 +174,17 @@ class TargetPredict (object):
         for line in proc.stdout:
             yield line
 
-    #def _remove_duplicate (self, hit_list):
-
-        #exon_id_dict ={}
-
-        #for hit in hit_list:
-
-            ## Extract original target sequence start and end location
-            #seq_id = hit.gff.seq_id
-            #start = hit.gff.start
-            #end = hit.gff.end
-            #gene_id = hit.gff.gene_id
-            #gene_name = hit.gff.gene_name
-            #exon_id = hit.gff.exon_id
-            #score = hit.score
-
-            #if not exon_id in exon_id_dict:
-                #print ("Found exon: {}".format(exon_id))
-                #exon_id_dict[exon_id] = hit
-
-            #elif hit.score > exon_id_dict[exon_id].score:
-                #exon_id_dict[exon_id] = hit
-                #print ("Found better score for exon: {}".format(exon_id))
-
-            #else:
-                #print ("Found lesser or equivalent score for exon: {}".format(exon_id))
-
-        #return exon_id_dict.values()
 
     def _write_report (self, hit_list, file_name):
 
-        with open (file_name, "w") as report:
-            for hit in hit_list:
-                report.write ( self._dict_to_report(hit.report())+"\n")
+        with open (file_name, "w") as fout:
 
-    def _dict_to_report(self, d, tab=""):
-        """
-        Recursive function to return a text report from nested dict or OrderedDict objects
-        """
-        report = ""
-        for name, value in d.items():
-            if type(value) == OrderedDict or type(value) == dict:
-                report += "{}{}\n".format(tab, name)
-                report += self._dict_to_report(value, tab=tab+"\t")
-            else:
-                report += "{}{}\t{}\n".format(tab, name, value)
-        return report
+            # Write table header
+            fout.write ("\t".join(hit_list[0].report().keys())+"\n")
+
+            # Write values
+            for hit in hit_list:
+                fout.write ("\t".join([str(val) for val in hit.report().values()])+"\n")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #   TOP LEVEL INSTRUCTIONS
@@ -237,5 +192,7 @@ class TargetPredict (object):
 
 if __name__ == '__main__':
 
+    start_time = time()
     with TargetPredict.class_init() as target_predict:
         target_predict()
+    print ("\nDone in {}s".format(round(time()-start_time, 3)))

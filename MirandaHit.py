@@ -9,6 +9,9 @@
 * [Atlantic Gene Therapies - INSERM 1089] (http://www.atlantic-gene-therapies.fr/)
 """
 
+# Standard library packages
+from collections import OrderedDict
+
 # Local packages
 from GffLine import GffLine
 
@@ -60,3 +63,21 @@ class MirandaHit(object):
 
     def __repr__(self):
         return "<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
+
+    def report (self):
+        """Return and ordered dict containing all the required informations"""
+        report = OrderedDict()
+        for key, val in self.gff.report().items():
+            report ["subject_"+key] = val
+        report ["subject_hit_start"] = self.s_start+1
+        report ["subject_hit_end"] = self.s_end
+        report ["query"] = self.q_id
+        report ["query_hit_start"] = self.q_start+1
+        report ["query_hit_end"] = self.q_end
+        report ["hit_score"] = self.score
+        report ["hit_energy"] = self.energy
+        report ["hit_length"] = self.length
+        report ["hit_identity"] = self.identity
+        report ["hit_homology"] = self.homology
+
+        return report
