@@ -1,0 +1,17 @@
+Program GffFastaExtractor 0.1	Date 2015-08-20 09:40:49.501645
+
+### OPTIONS ###
+Original fasta	sample.fa
+Original gff	sample.gff
+Offset	200
+Fusion	True
+Output gff	False
+Restricted features	exon
+Restricted chromosomes	
+
+### COUNTS ###
+Sequence(s) in gff file	3
+Valid sequence(s) in gff file	3
+Features(s) in gff file	11
+Valid features(s) in gff file	11
+Remaining features after fusion	5
