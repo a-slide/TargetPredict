@@ -55,15 +55,20 @@ class GffLine(object):
 
     def report (self):
         report = OrderedDict()
-        report ["exon_id"] = self.exon_id
-        report ["exon_number"] = self.exon_number
-        report ["transcript_id"] = self.transcript_id
-        report ["transcript_name"] = self.transcript_name
-        report ["gene_id"] = self.gene_id
-        report ["gene_name"] = self.gene_name
-        report ["chromosome"] = self.seq_id
-        report ["start"] = self.start
-        report ["end"] = self.end
-        report ["strand"] = self.strand
+        for attribute in [
+            "exon_id",
+            "exon_number",
+            "transcript_id",
+            "transcript_name",
+            "transcript_type",
+            "gene_id",
+            "gene_name",
+            "gene_type",
+            "seq_id",
+            "start",
+            "end",
+            "strand"]:
+            if attribute in self.__dict__:
+                report [attribute] = self.__dict__[attribute]
 
         return report

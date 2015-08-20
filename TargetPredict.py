@@ -134,7 +134,7 @@ class TargetPredict (object):
         print ("Finding hits with MIRANDA")
 
         miranda_exec = "miranda"
-        miranda_score = 175
+        miranda_score = 180
         miranda_opt = "-quiet"
 
         cmd = "{} {} {} {} -sc {}".format(miranda_exec, self.query, self.subject, miranda_opt, miranda_score)
