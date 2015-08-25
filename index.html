@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Targetpredict by a-slide</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Targetpredict</h1>
+      <h2 class="project-tagline">Predict the targets of a short RNA in annotated features from genomic DNA, using BLAST, MIRANDA...</h2>
+      <a href="https://github.com/a-slide/TargetPredict" class="btn">View on GitHub</a>
+      <a href="https://github.com/a-slide/TargetPredict/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/a-slide/TargetPredict/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="targetpredict-01" class="anchor" href="#targetpredict-01" aria-hidden="true"><span class="octicon octicon-link"></span></a>TargetPredict 0.1</h1>
+
+<p><strong>Find the targets of a short RNA in the transcriptome using BLASTN and MIRANDA</strong></p>
+
+<hr>
+
+<p><strong>Creation : 2015/03/08</strong></p>
+
+<p><strong>Last update : 2015/03/25</strong></p>
+
+<hr>
+
+<h2>
+<a id="motivation-and-principle" class="anchor" href="#motivation-and-principle" aria-hidden="true"><span class="octicon octicon-link"></span></a>Motivation and Principle</h2>
+
+<p>This program was develop to detect imperfect off-target effects of a small RNA in the human transcriptome.</p>
+
+<h4>
+<a id="gfffastaextractorpy" class="anchor" href="#gfffastaextractorpy" aria-hidden="true"><span class="octicon octicon-link"></span></a>GffFastaExtractor.py</h4>
+
+<p>Extract the sequences from a fasta file corresponding to features location indicated in a gff file. Features in the gff files can be restricted to a list of chromosomes and a list of types. Features can be extended in 5' and 3' and overlapping features can be merged together.</p>
+
+<h4>
+<a id="targetpredictpy" class="anchor" href="#targetpredictpy" aria-hidden="true"><span class="octicon octicon-link"></span></a>TargetPredict.py</h4>
+
+<p>Search targets for a query fasta sequence (short RNA) in a subject fasta sequence using Blastn and Miranda algorithms. The ouput of the program is parsed and returned as csv tables sorted according to the alignment score. </p>
+
+<h2>
+<a id="dependencies" class="anchor" href="#dependencies" aria-hidden="true"><span class="octicon octicon-link"></span></a>Dependencies</h2>
+
+<p>The program was developed under Linux Mint 17.2 and was not tested with other OS. In addition to a python2.7 envronment the following dependencies are required for proper program execution:</p>
+
+<p><strong>GffFastaExtractor.py</strong></p>
+
+<ul>
+<li>Python package:  Biopython 1.65 +</li>
+</ul>
+
+<p><strong>TargetPredict.py</strong></p>
+
+<ul>
+<li>NCBI Blast 2.2.28+</li>
+<li>Miranda v3.3a+</li>
+</ul>
+
+<h2>
+<a id="get-and-install-targetpredict" class="anchor" href="#get-and-install-targetpredict" aria-hidden="true"><span class="octicon octicon-link"></span></a>Get and install TargetPredict</h2>
+
+<ul>
+<li><p>Clone the repository <code>git clone https://github.com/a-slide/TargetPredict.git</code></p></li>
+<li><p>Enter the src folder of the program folder</p></li>
+<li><p>Make the main scripts executable <code>sudo chmod u+x TargetPredict.py GffFastaExtractor.py</code></p></li>
+<li><p>Finally, add or link TargetPredict.py and GffFastaExtractor.py to your PATH</p></li>
+</ul>
+
+<h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<p><strong>GffFastaExtractor.py</strong></p>
+
+<pre><code>Usage: GffFastaExtractor.py -f FASTA_file -g GFF_file [...]
+
+Options:
+  --version                 show program's version number and exit
+  -h, --help                show this help message and exit
+  -f FASTA, --fasta=FASTA   Path to the fasta file contaning the complete genome (can be gzipped)
+  -g GFF, --gff=GFF         Path to the gff file containing annotations of the genome file (can be gzipped)
+  -o OFFSET, --offset=OFFSET    Bases to extract before and after the feature (default 0)
+  --fusion                  Fuse overlapping features in a meta-feature (default False)
+  --output_gff              Output the gff file corresponding to the extracted features sequences (default False)
+  --features=FEATURES       Restrict extraction to a list of features. The list must be SPACE separated and quoted (default exon)
+  --chromosomes=CHROMOSOMES     Restrict extraction to a list of chromosomes. The list must be SPACE separated and quoted (default all)
+</code></pre>
+
+<p><strong>TargetPredict.py</strong></p>
+
+<pre><code>Usage: TargetPredict.py -s SUBJECT -q QUERY [...]
+
+Options:
+  --version                 show program's version number and exit
+  -h, --help                show this help message and exit
+  -s SUBJECT, --subject=SUBJECT Path to the subject in fasta
+  -q QUERY, --query=QUERY   Path to the query in fasta
+  --blastn_opt=BLASTN_OPT   Options to run blastn (default='-task blastn-short -evalue 100000000 -word_size 5 -max_target_seqs 10000')
+  --miranda_opt=MIRANDA_OPT Options to run miranda (default='-sc 160')
+</code></pre>
+
+<h2>
+<a id="authors-and-contact" class="anchor" href="#authors-and-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>Authors and Contact</h2>
+
+<p>Adrien Leger - 2015</p>
+
+<ul>
+<li>
+<a href="mailto:adrien.leger@gmail.com">adrien.leger@gmail.com</a> - <a href="mailto:adrien.leger@inserm.fr">adrien.leger@inserm.fr</a> - <a href="mailto:adrien.leger@univ-nantes.fr">adrien.leger@univ-nantes.fr</a>
+</li>
+<li><a href="https://github.com/a-slide">Github</a></li>
+<li><a href="http://www.atlantic-gene-therapies.fr/">Atlantic Gene Therapies - INSERM 1089</a></li>
+<li><a href="http://a-slide.github.io/">Drowned in genomics</a></li>
+</ul>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/a-slide/TargetPredict">Targetpredict</a> is maintained by <a href="https://github.com/a-slide">a-slide</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
